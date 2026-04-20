@@ -691,13 +691,21 @@ class TabBar:
         blank_rects: list[Border] = []
         bg = BorderColor.tab_bar_margin_color if opts.tab_bar_margin_color is not None else BorderColor.default_bg
         if self.is_vertical:
-            # For left/right bars there are no margin-height gaps, but we
-            # still fill any pixel gap between the cell grid and the bar edge.
+            # For left/right bars there are no margin-height gaps, but
+            # tab_bar_width is unlikely to be an exact multiple of cell_width
+            # so fill any pixel gaps between the cell grid and the bar edges
+            # with tab_bar_background (or tab_bar_margin_color if set) — otherwise
+            # those strips are never repainted and show stale framebuffer content.
+            vbg = BorderColor.tab_bar_margin_color if opts.tab_bar_margin_color is not None else BorderColor.tab_bar_bg
             g = self.window_geometry
             if g.top > 0:
-                blank_rects.append(Border(tab_bar.left, 0, tab_bar.right, g.top, bg))
+                blank_rects.append(Border(tab_bar.left, 0, tab_bar.right, g.top, vbg))
             if g.bottom < vh:
-                blank_rects.append(Border(tab_bar.left, g.bottom, tab_bar.right, vh, bg))
+                blank_rects.append(Border(tab_bar.left, g.bottom, tab_bar.right, vh, vbg))
+            if g.left > tab_bar.left:
+                blank_rects.append(Border(tab_bar.left, 0, g.left, vh, vbg))
+            if g.right < tab_bar.right:
+                blank_rects.append(Border(g.right, 0, tab_bar.right, vh, vbg))
         else:
             if opts.tab_bar_margin_height:
                 if opts.tab_bar_edge == BOTTOM_EDGE:

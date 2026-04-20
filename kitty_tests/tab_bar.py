@@ -123,3 +123,66 @@ class TestVerticalTabBar(BaseTest):
         self.ae(tab_id_at(0, 45), 30)
         # y=65 → row 3 → no match
         self.ae(tab_id_at(0, 65), 0)
+
+    def test_vertical_blank_rects_fill_inner_edge_gap(self):
+        # tab_bar_width rarely lands on an exact cell_width boundary, so
+        # _layout_vertical can leave up to (cell_width - 1) pixels between
+        # the cell grid and the inner edge of the bar. update_blank_rects
+        # must emit a rect covering that strip, otherwise it retains stale
+        # framebuffer content (see sliver bug on the left edge).
+        from kitty.borders import BorderColor
+        from kitty.fast_data_types import Region
+        from kitty.tab_bar import TabBar
+        from kitty.types import WindowGeometry
+
+        self.set_options()
+
+        class FakeTabBar:
+            is_vertical = True
+            # Left edge bar: tab_bar.right = 125, but grid ends at 120.
+            window_geometry = WindowGeometry(left=0, top=0, right=120, bottom=600, xnum=12, ynum=30)
+            blank_rects: tuple = ()
+
+        tb = FakeTabBar()
+        tab_bar = Region((0, 0, 125, 600, 125, 600))
+        central = Region((125, 0, 1000, 600, 875, 600))
+
+        TabBar.update_blank_rects(tb, central, tab_bar, vw=1000, vh=600)
+
+        # Expect at least one rect covering [g.right, tab_bar.right] full-height.
+        matching = [
+            r for r in tb.blank_rects
+            if r.left == 120 and r.right == 125 and r.top == 0 and r.bottom == 600
+        ]
+        self.assertTrue(matching, f'inner-edge gap rect missing from {tb.blank_rects!r}')
+        # It should be filled with tab_bar_background (vs default_bg), so the
+        # strip visually belongs to the tab bar not the terminal content.
+        self.ae(matching[0].color, BorderColor.tab_bar_bg)
+
+    def test_vertical_blank_rects_right_edge_outer_gap(self):
+        # Symmetric case: tab_bar_edge=right leaves the gap on the outer
+        # (window-right) side of the grid, still within the tab_bar region.
+        from kitty.fast_data_types import Region
+        from kitty.tab_bar import TabBar
+        from kitty.types import WindowGeometry
+
+        self.set_options()
+
+        class FakeTabBar:
+            is_vertical = True
+            # Right edge bar: tab_bar.left = 875, grid starts at 875 and ends
+            # at 995 (12 cells * 10px); tab_bar.right = 1000.
+            window_geometry = WindowGeometry(left=875, top=0, right=995, bottom=600, xnum=12, ynum=30)
+            blank_rects: tuple = ()
+
+        tb = FakeTabBar()
+        tab_bar = Region((875, 0, 1000, 600, 125, 600))
+        central = Region((0, 0, 875, 600, 875, 600))
+
+        TabBar.update_blank_rects(tb, central, tab_bar, vw=1000, vh=600)
+
+        matching = [
+            r for r in tb.blank_rects
+            if r.left == 995 and r.right == 1000 and r.top == 0 and r.bottom == 600
+        ]
+        self.assertTrue(matching, f'outer-edge gap rect missing from {tb.blank_rects!r}')
