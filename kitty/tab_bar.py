@@ -805,7 +805,9 @@ class TabBar:
             # For vertical bars the "cell_range" stores the row index in both start and end.
             cr.append(TabExtent(tab_id=t.tab_id, cell_range=CellRange(i, i)))
         self.tab_extents = cr
-        update_tab_bar_edge_colors(self.os_window_id)
+        # update_tab_bar_edge_colors samples the first/last cell of row 0 to
+        # colour the left/right margin strips beside a horizontal bar.  For a
+        # vertical bar those strips don't exist, so skip the call.
 
     def _update_horizontal(self, data: Sequence[TabBarData]) -> None:
         s = self.screen

@@ -1642,7 +1642,8 @@ opt('tab_bar_margin_height', '0.0 0.0',
     long_text='''
 The margin above and below the tab bar (in pts). The first number is the margin
 between the edge of the OS Window and the tab bar. The second number is the
-margin between the tab bar and the contents of the current tab.
+margin between the tab bar and the contents of the current tab. Only applies
+when :opt:`tab_bar_edge` is :code:`top` or :code:`bottom`; ignored for left/right.
 '''
     )
 
@@ -1692,7 +1693,8 @@ opt('tab_bar_align', 'left',
     choices=('left', 'center', 'right'),
     long_text='''
 The horizontal alignment of the tab bar, can be one of: :code:`left`,
-:code:`center`, :code:`right`.
+:code:`center`, :code:`right`. Ignored when :opt:`tab_bar_edge` is
+:code:`left` or :code:`right` (vertical bars are always top-aligned).
 '''
     )
 
