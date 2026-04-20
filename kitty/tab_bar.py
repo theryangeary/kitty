@@ -16,6 +16,8 @@ from .constants import config_dir
 from .fast_data_types import (
     BOTTOM_EDGE,
     DECAWM,
+    LEFT_EDGE,
+    RIGHT_EDGE,
     Color,
     Region,
     Screen,
@@ -614,10 +616,11 @@ class TabBar:
             opts.active_tab_title_template,
             opts.tab_activity_symbol,
             opts.tab_powerline_style,
-            'bottom' if opts.tab_bar_edge == BOTTOM_EDGE else 'top',
+            {BOTTOM_EDGE: 'bottom', LEFT_EDGE: 'left', RIGHT_EDGE: 'right'}.get(opts.tab_bar_edge, 'top'),
             opts.tab_title_max_length, self.os_window_id,
         )
         ts = opts.tab_bar_style
+        self.is_vertical = opts.tab_bar_edge in (LEFT_EDGE, RIGHT_EDGE)
         if ts == 'separator':
             self.draw_func: DrawTabFunc = draw_tab_with_separator
         elif ts == 'powerline':
@@ -628,8 +631,10 @@ class TabBar:
             self.draw_func = load_custom_draw_tab()
         else:
             self.draw_func = draw_tab_with_fade
-        if opts.tab_bar_align == 'center':
-            self.align: Callable[[], None] = partial(self.align_with_factor, 2)
+        if self.is_vertical:
+            self.align: Callable[[], None] = lambda: None
+        elif opts.tab_bar_align == 'center':
+            self.align = partial(self.align_with_factor, 2)
         elif opts.tab_bar_align == 'right':
             self.align = self.align_with_factor
         else:
@@ -685,31 +690,46 @@ class TabBar:
         opts = get_options()
         blank_rects: list[Border] = []
         bg = BorderColor.tab_bar_margin_color if opts.tab_bar_margin_color is not None else BorderColor.default_bg
-        if opts.tab_bar_margin_height:
-            if opts.tab_bar_edge == BOTTOM_EDGE:
-                if opts.tab_bar_margin_height.outer:
-                    blank_rects.append(Border(0, tab_bar.bottom, vw, vh, bg))
-                if opts.tab_bar_margin_height.inner:
-                    blank_rects.append(Border(0, central.bottom, vw, tab_bar.top, bg))
-            else: # top
-                if opts.tab_bar_margin_height.outer:
-                    blank_rects.append(Border(0, 0, vw, tab_bar.top, bg))
-                if opts.tab_bar_margin_height.inner:
-                    blank_rects.append(Border(0, tab_bar.bottom, vw, central.top, bg))
-        g = self.window_geometry
-        left_bg = right_bg = bg
-        if opts.tab_bar_margin_color is None and (
-                opacity := background_opacity_of(self.os_window_id)) is not None and opacity >= 1:
-            left_bg = BorderColor.tab_bar_left_edge_color
-            right_bg = BorderColor.tab_bar_right_edge_color
-        if g.left > 0:
-            blank_rects.append(Border(0, g.top, g.left, g.bottom, left_bg))
-        if g.right < vw:
-            blank_rects.append(Border(g.right, g.top, vw, g.bottom, right_bg))
+        if self.is_vertical:
+            # For left/right bars there are no margin-height gaps, but we
+            # still fill any pixel gap between the cell grid and the bar edge.
+            g = self.window_geometry
+            if g.top > 0:
+                blank_rects.append(Border(tab_bar.left, 0, tab_bar.right, g.top, bg))
+            if g.bottom < vh:
+                blank_rects.append(Border(tab_bar.left, g.bottom, tab_bar.right, vh, bg))
+        else:
+            if opts.tab_bar_margin_height:
+                if opts.tab_bar_edge == BOTTOM_EDGE:
+                    if opts.tab_bar_margin_height.outer:
+                        blank_rects.append(Border(0, tab_bar.bottom, vw, vh, bg))
+                    if opts.tab_bar_margin_height.inner:
+                        blank_rects.append(Border(0, central.bottom, vw, tab_bar.top, bg))
+                else:  # top
+                    if opts.tab_bar_margin_height.outer:
+                        blank_rects.append(Border(0, 0, vw, tab_bar.top, bg))
+                    if opts.tab_bar_margin_height.inner:
+                        blank_rects.append(Border(0, tab_bar.bottom, vw, central.top, bg))
+            g = self.window_geometry
+            left_bg = right_bg = bg
+            if opts.tab_bar_margin_color is None and (
+                    opacity := background_opacity_of(self.os_window_id)) is not None and opacity >= 1:
+                left_bg = BorderColor.tab_bar_left_edge_color
+                right_bg = BorderColor.tab_bar_right_edge_color
+            if g.left > 0:
+                blank_rects.append(Border(0, g.top, g.left, g.bottom, left_bg))
+            if g.right < vw:
+                blank_rects.append(Border(g.right, g.top, vw, g.bottom, right_bg))
         self.blank_rects = tuple(blank_rects)
 
     def layout(self) -> None:
         central, tab_bar, vw, vh, cell_width, cell_height = viewport_for_window(self.os_window_id)
+        if self.is_vertical:
+            self._layout_vertical(tab_bar, vw, vh, cell_width, cell_height, central)
+        else:
+            self._layout_horizontal(tab_bar, vw, vh, cell_width, central)
+
+    def _layout_horizontal(self, tab_bar: Region, vw: int, vh: int, cell_width: int, central: Region) -> None:
         if tab_bar.width < 2:
             return
         self.cell_width = cell_width
@@ -728,9 +748,66 @@ class TabBar:
         self.update_blank_rects(central, tab_bar, vw, vh)
         set_tab_bar_render_data(self.os_window_id, self.screen, *g[:4])
 
+    def _layout_vertical(self, tab_bar: Region, vw: int, vh: int, cell_width: int, cell_height: int, central: Region) -> None:
+        if tab_bar.width < cell_width or tab_bar.height < cell_height:
+            return
+        self.cell_width = cell_width
+        self.cell_height = cell_height
+        s = self.screen
+        ncells_w = max(2, tab_bar.width // cell_width)
+        nrows = max(1, tab_bar.height // cell_height)
+        s.resize(nrows, ncells_w)
+        s.reset_mode(DECAWM)
+        cell_area_height = nrows * cell_height
+        self.laid_out_once = True
+        self.window_geometry = g = WindowGeometry(
+            tab_bar.left, tab_bar.top,
+            tab_bar.left + ncells_w * cell_width, tab_bar.top + cell_area_height,
+            s.columns, s.lines)
+        self.update_blank_rects(central, tab_bar, vw, vh)
+        set_tab_bar_render_data(self.os_window_id, self.screen, *g[:4])
+
     def update(self, data: Sequence[TabBarData]) -> None:
         if not self.laid_out_once:
             return
+        if self.is_vertical:
+            self._update_vertical(data)
+        else:
+            self._update_horizontal(data)
+
+    def _update_vertical(self, data: Sequence[TabBarData]) -> None:
+        s = self.screen
+        s.erase_in_display(2, False)  # clear entire screen
+        cr: list[TabExtent] = []
+        ed = ExtraData()
+        ed.for_layout = False
+        max_tab_length = max(1, s.columns - 1)
+        for i, t in enumerate(data):
+            if i >= s.lines:
+                # More tabs than rows: mark overflow on last available row
+                s.cursor.x = 0
+                s.cursor.y = s.lines - 1
+                s.cursor.bg = as_rgb(color_as_int(self.draw_data.default_bg))
+                s.cursor.fg = as_rgb(0xff0000)
+                s.erase_in_line(2, False)
+                s.draw(' …')
+                break
+            s.cursor.x = 0
+            s.cursor.y = i
+            s.erase_in_line(2, False)
+            s.cursor.bg = as_rgb(self.draw_data.tab_bg(t))
+            s.cursor.fg = as_rgb(self.draw_data.tab_fg(t))
+            s.cursor.bold, s.cursor.italic = self.active_font_style if t.is_active else self.inactive_font_style
+            ed.prev_tab = data[i - 1] if i > 0 else None
+            ed.next_tab = data[i + 1] if i + 1 < len(data) else None
+            draw_tab_with_fade(self.draw_data, s, t, 0, max_tab_length, i + 1, i == len(data) - 1, ed)
+            s.cursor.bg = s.cursor.fg = 0
+            # For vertical bars the "cell_range" stores the row index in both start and end.
+            cr.append(TabExtent(tab_id=t.tab_id, cell_range=CellRange(i, i)))
+        self.tab_extents = cr
+        update_tab_bar_edge_colors(self.os_window_id)
+
+    def _update_horizontal(self, data: Sequence[TabBarData]) -> None:
         s = self.screen
         last_tab = data[-1] if data else None
         ed = ExtraData()
@@ -811,10 +888,16 @@ class TabBar:
         self.screen.reset_callbacks()
         del self.screen
 
-    def tab_id_at(self, x: int) -> int:
+    def tab_id_at(self, x: int, y: int = 0) -> int:
         if self.laid_out_once:
-            x = (x - self.window_geometry.left) // self.cell_width
-            for te in self.tab_extents:
-                if te.cell_range.start <= x <= te.cell_range.end:
-                    return te.tab_id
+            if self.is_vertical:
+                row = (y - self.window_geometry.top) // self.cell_height
+                for te in self.tab_extents:
+                    if te.cell_range.start == row:
+                        return te.tab_id
+            else:
+                x = (x - self.window_geometry.left) // self.cell_width
+                for te in self.tab_extents:
+                    if te.cell_range.start <= x <= te.cell_range.end:
+                        return te.tab_id
         return 0
