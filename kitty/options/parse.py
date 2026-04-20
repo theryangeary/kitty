@@ -1385,6 +1385,9 @@ class Parser:
 
     choices_for_tab_bar_style = frozenset(('fade', 'hidden', 'powerline', 'separator', 'slant', 'custom'))
 
+    def tab_bar_width(self, val: str, ans: dict[str, typing.Any]) -> None:
+        ans['tab_bar_width'] = positive_float(val)
+
     def tab_fade(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['tab_fade'] = tab_fade(val)
 

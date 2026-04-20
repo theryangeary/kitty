@@ -1615,12 +1615,26 @@ agr('tabbar', 'Tab bar')
 
 opt('tab_bar_edge', 'bottom',
     option_type='tab_bar_edge', ctype='int',
-    long_text='The edge to show the tab bar on, :code:`top` or :code:`bottom`.'
+    long_text='''
+The edge to show the tab bar on, one of :code:`top`, :code:`bottom`,
+:code:`left` or :code:`right`. When set to :code:`left` or :code:`right` the
+tab bar is rendered vertically along that side of the OS Window, with each
+tab stacked on its own row and the tab text still flowing left-to-right.
+The width of the vertical bar is controlled by :opt:`tab_bar_width`.
+'''
     )
 
 opt('tab_bar_margin_width', '0.0',
     option_type='positive_float',
     long_text='The margin to the left and right of the tab bar (in pts).'
+    )
+
+opt('tab_bar_width', '120.0',
+    option_type='positive_float',
+    long_text='''
+The width of the tab bar (in pts) when :opt:`tab_bar_edge` is set to
+:code:`left` or :code:`right`. Ignored for top/bottom tab bars.
+'''
     )
 
 opt('tab_bar_margin_height', '0.0 0.0',
