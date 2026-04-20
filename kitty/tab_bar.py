@@ -693,10 +693,17 @@ class TabBar:
         if self.is_vertical:
             # For left/right bars there are no margin-height gaps, but
             # tab_bar_width is unlikely to be an exact multiple of cell_width
-            # so fill any pixel gaps between the cell grid and the bar edges
-            # with tab_bar_background (or tab_bar_margin_color if set) — otherwise
-            # those strips are never repainted and show stale framebuffer content.
-            vbg = BorderColor.tab_bar_margin_color if opts.tab_bar_margin_color is not None else BorderColor.tab_bar_bg
+            # so fill any pixel gaps between the cell grid and the bar edges —
+            # otherwise those strips are never repainted and show stale
+            # framebuffer content. Precedence matches horizontal bars and the
+            # tab-bar cell default_bg (see opts.tab_bar_background or opts.background):
+            # tab_bar_margin_color > tab_bar_background > terminal background.
+            if opts.tab_bar_margin_color is not None:
+                vbg = BorderColor.tab_bar_margin_color
+            elif opts.tab_bar_background is not None:
+                vbg = BorderColor.tab_bar_bg
+            else:
+                vbg = BorderColor.default_bg
             g = self.window_geometry
             if g.top > 0:
                 blank_rects.append(Border(tab_bar.left, 0, tab_bar.right, g.top, vbg))

@@ -135,7 +135,7 @@ class TestVerticalTabBar(BaseTest):
         from kitty.tab_bar import TabBar
         from kitty.types import WindowGeometry
 
-        self.set_options()
+        from kitty.rgb import to_color
 
         class FakeTabBar:
             is_vertical = True
@@ -147,17 +147,33 @@ class TestVerticalTabBar(BaseTest):
         tab_bar = Region((0, 0, 125, 600, 125, 600))
         central = Region((125, 0, 1000, 600, 875, 600))
 
-        TabBar.update_blank_rects(tb, central, tab_bar, vw=1000, vh=600)
+        def gap_rect() -> 'BorderColor':
+            rects = [
+                r for r in tb.blank_rects
+                if r.left == 120 and r.right == 125 and r.top == 0 and r.bottom == 600
+            ]
+            self.assertTrue(rects, f'inner-edge gap rect missing from {tb.blank_rects!r}')
+            return rects[0].color
 
-        # Expect at least one rect covering [g.right, tab_bar.right] full-height.
-        matching = [
-            r for r in tb.blank_rects
-            if r.left == 120 and r.right == 125 and r.top == 0 and r.bottom == 600
-        ]
-        self.assertTrue(matching, f'inner-edge gap rect missing from {tb.blank_rects!r}')
-        # It should be filled with tab_bar_background (vs default_bg), so the
-        # strip visually belongs to the tab bar not the terminal content.
-        self.ae(matching[0].color, BorderColor.tab_bar_bg)
+        # Default: tab_bar_background=none, tab_bar_margin_color=none →
+        # fall back to the terminal background so we don't paint the gap
+        # black when the user hasn't opted into a tab bar bg color.
+        self.set_options()
+        TabBar.update_blank_rects(tb, central, tab_bar, vw=1000, vh=600)
+        self.ae(gap_rect(), BorderColor.default_bg)
+
+        # Explicit tab_bar_background: use it.
+        self.set_options({'tab_bar_background': to_color('#112233')})
+        TabBar.update_blank_rects(tb, central, tab_bar, vw=1000, vh=600)
+        self.ae(gap_rect(), BorderColor.tab_bar_bg)
+
+        # tab_bar_margin_color wins over tab_bar_background.
+        self.set_options({
+            'tab_bar_background': to_color('#112233'),
+            'tab_bar_margin_color': to_color('#445566'),
+        })
+        TabBar.update_blank_rects(tb, central, tab_bar, vw=1000, vh=600)
+        self.ae(gap_rect(), BorderColor.tab_bar_margin_color)
 
     def test_vertical_blank_rects_right_edge_outer_gap(self):
         # Symmetric case: tab_bar_edge=right leaves the gap on the outer
