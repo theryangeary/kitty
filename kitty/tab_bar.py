@@ -27,6 +27,7 @@ from .fast_data_types import (
     get_options,
     pt_to_px,
     set_tab_bar_render_data,
+    set_tab_bar_width_override,
     update_tab_bar_edge_colors,
     viewport_for_window,
     wcswidth,
@@ -621,6 +622,8 @@ class TabBar:
         )
         ts = opts.tab_bar_style
         self.is_vertical = opts.tab_bar_edge in (LEFT_EDGE, RIGHT_EDGE)
+        self.auto_width = self.is_vertical and opts.tab_bar_auto_width
+        self._auto_width_max_px = pt_to_px(opts.tab_bar_width, self.os_window_id)
         if ts == 'separator':
             self.draw_func: DrawTabFunc = draw_tab_with_separator
         elif ts == 'powerline':
@@ -789,6 +792,35 @@ class TabBar:
             self._update_vertical(data)
         else:
             self._update_horizontal(data)
+
+    def compute_auto_width_px(self, data: Sequence[TabBarData]) -> int:
+        '''Desired vertical bar width in pixels, clamped to tab_bar_width (pts).
+
+        Returns 0 when auto-sizing is disabled so callers can treat 0 as "use
+        the configured max." Width is derived from the rendered title (via
+        apply_title_template, with SGR stripped) plus the fade/padding overhead
+        used by draw_tab_with_fade.
+        '''
+        if not self.auto_width or not data:
+            return 0
+        # Leading fade cells + title + trailing space used by draw_tab_with_fade.
+        # Other draw styles have similar overhead within ~1 cell; this slack
+        # keeps the last column from being cut off in practice.
+        padding = len(self.draw_data.alpha) + 2
+        max_cells = 1
+        sgr = sgr_sanitizer_pat()
+        for i, t in enumerate(data):
+            try:
+                rendered = apply_title_template(self.draw_data, t, i + 1)
+            except Exception:
+                rendered = t.title
+            if '\x1b' in rendered:
+                rendered = sgr.sub('', rendered)
+            w = wcswidth(rendered)
+            if w > max_cells:
+                max_cells = w
+        desired_px = (max_cells + padding) * self.cell_width
+        return max(self.cell_width, min(desired_px, self._auto_width_max_px))
 
     def _update_vertical(self, data: Sequence[TabBarData]) -> None:
         s = self.screen

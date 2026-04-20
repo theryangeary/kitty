@@ -1633,7 +1633,18 @@ opt('tab_bar_width', '120.0',
     option_type='positive_float', ctype='float',
     long_text='''
 The width of the tab bar (in pts) when :opt:`tab_bar_edge` is set to
-:code:`left` or :code:`right`. Ignored for top/bottom tab bars.
+:code:`left` or :code:`right`. Ignored for top/bottom tab bars. When
+:opt:`tab_bar_auto_width` is enabled, this value is used as the maximum
+width.
+'''
+    )
+
+opt('tab_bar_auto_width', 'no',
+    option_type='to_bool',
+    long_text='''
+When :opt:`tab_bar_edge` is :code:`left` or :code:`right`, automatically
+size the tab bar width to fit the widest currently-visible tab title,
+capped at :opt:`tab_bar_width`. Ignored for top/bottom tab bars.
 '''
     )
 

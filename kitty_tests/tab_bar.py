@@ -175,6 +175,51 @@ class TestVerticalTabBar(BaseTest):
         TabBar.update_blank_rects(tb, central, tab_bar, vw=1000, vh=600)
         self.ae(gap_rect(), BorderColor.tab_bar_margin_color)
 
+    def test_compute_auto_width_px(self):
+        # auto_width must: return 0 when disabled, scale with the widest title
+        # (+ fade/padding overhead), and clamp to tab_bar_width.
+        from kitty.tab_bar import TabBar, TabBarData
+
+        class FakeDrawData:
+            alpha = (0.25, 0.5, 0.75, 1.0)
+            # apply_title_template short-circuits to tab.title for tab_id < 0,
+            # so the rest of this struct isn't exercised here.
+            max_tab_title_length = 0
+            title_template = '{title}'
+            active_title_template = None
+            tab_activity_symbol = ''
+            bell_on_tab = ''
+
+        class FakeTabBar:
+            auto_width = True
+            cell_width = 10
+            _auto_width_max_px = 1000
+            draw_data = FakeDrawData()
+
+        tb = FakeTabBar()
+
+        def call(titles: list[str]) -> int:
+            data = [TabBarData(title=t, tab_id=-1) for t in titles]
+            return TabBar.compute_auto_width_px(tb, data)
+
+        # Empty data and auto_width=False both short-circuit to 0.
+        self.ae(call([]), 0)
+        tb.auto_width = False
+        self.ae(call(['hello']), 0)
+        tb.auto_width = True
+
+        # Widest title drives the width; padding = len(alpha) + 2.
+        # 'longer title' = 12 cells, padding = 4 + 2 = 6 → 18 * 10 = 180px.
+        self.ae(call(['x', 'longer title', 'y']), 180)
+
+        # Clamp to the configured max (tab_bar_width).
+        tb._auto_width_max_px = 100
+        self.ae(call(['x' * 50]), 100)
+
+        # SGR escapes in the rendered title are stripped before measuring.
+        tb._auto_width_max_px = 10000
+        self.ae(call(['\x1b[31mhi\x1b[0m']), (2 + 6) * 10)
+
     def test_vertical_blank_rects_right_edge_outer_gap(self):
         # Symmetric case: tab_bar_edge=right leaves the gap on the outer
         # (window-right) side of the grid, still within the tab_bar region.

@@ -1353,6 +1353,9 @@ class Parser:
 
     choices_for_tab_bar_align = frozenset(('left', 'center', 'right'))
 
+    def tab_bar_auto_width(self, val: str, ans: dict[str, typing.Any]) -> None:
+        ans['tab_bar_auto_width'] = to_bool(val)
+
     def tab_bar_background(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['tab_bar_background'] = to_color_or_none(val)
 

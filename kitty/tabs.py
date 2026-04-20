@@ -48,6 +48,7 @@ from .fast_data_types import (
     set_active_tab,
     set_active_window,
     set_redirect_keys_to_overlay,
+    set_tab_bar_width_override,
     set_tab_being_dragged,
     set_window_being_dragged,
     start_drag_with_data,
@@ -1319,7 +1320,23 @@ class TabManager:  # {{{
                 watcher(boss, w, data)
 
     def update_tab_bar_data(self) -> None:
-        self.tab_bar.update(self.tab_bar_data)
+        data = self.tab_bar_data
+        if self.tab_bar.auto_width and not self.tab_bar_hidden and self.tab_bar_should_be_visible:
+            self._apply_auto_tab_bar_width(data)
+        self.tab_bar.update(data)
+
+    def _apply_auto_tab_bar_width(self, data: Sequence[TabBarData]) -> None:
+        # Compute the desired width, push it to C, and relayout if it changed.
+        # Re-layout here (not via mark_tab_bar_dirty) to avoid bouncing back
+        # into update_tab_bar_data on the next frame.
+        desired_px = self.tab_bar.compute_auto_width_px(data)
+        if desired_px <= 0 or desired_px == getattr(self, '_last_auto_bar_width_px', -1):
+            return
+        self._last_auto_bar_width_px = desired_px
+        set_tab_bar_width_override(self.os_window_id, desired_px)
+        self.tab_bar.layout()
+        for tab in self.tabs:
+            tab.relayout()
 
     def title_changed(self, tab: Tab) -> None:
         self.mark_tab_bar_dirty()
@@ -2095,6 +2112,11 @@ class TabManager:  # {{{
             tab.apply_options(at is tab)
         self.tab_bar_hidden = get_options().tab_bar_style == 'hidden'
         self.tab_bar.apply_options()
+        # Clear any stale auto-width override; the next update_tab_bar_data
+        # (or the configured tab_bar_width fallback in os_window_regions) will
+        # pick the correct value based on the new options.
+        self._last_auto_bar_width_px = -1
+        set_tab_bar_width_override(self.os_window_id, 0)
         self.update_tab_bar_data()
         self.layout_tab_bar()
 # }}}

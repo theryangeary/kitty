@@ -1083,6 +1083,10 @@ def mark_tab_bar_dirty(os_window_id: int, should_be_shown: bool) -> None:
     pass
 
 
+def set_tab_bar_width_override(os_window_id: int, width_px: int) -> None:
+    pass
+
+
 def is_tab_bar_visible(os_window_id: int) -> bool: ...
 
 

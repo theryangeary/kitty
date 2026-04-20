@@ -700,8 +700,11 @@ os_window_regions(const OSWindow *os_window, Region *central, Region *tab_bar) {
         switch(OPT(tab_bar_edge)) {
             case LEFT_EDGE: {
                 // Vertical tab bar on the left. No inner/outer margins yet — tab_bar_margin_height
-                // is specific to horizontal bars. Width is configured by tab_bar_width (pts).
-                unsigned bar_w = pt_to_px_for_os_window(OPT(tab_bar_width), os_window);
+                // is specific to horizontal bars. Width is configured by tab_bar_width (pts);
+                // tab_bar_width_override_px (when non-zero, set by Python for auto-sizing) wins.
+                unsigned bar_w = os_window->tab_bar_width_override_px
+                    ? os_window->tab_bar_width_override_px
+                    : (unsigned)pt_to_px_for_os_window(OPT(tab_bar_width), os_window);
                 bar_w = MIN(bar_w, (unsigned)os_window->viewport_width);
                 central->left = bar_w;
                 central->right = os_window->viewport_width;
@@ -714,7 +717,9 @@ os_window_regions(const OSWindow *os_window, Region *central, Region *tab_bar) {
                 return;
             }
             case RIGHT_EDGE: {
-                unsigned bar_w = pt_to_px_for_os_window(OPT(tab_bar_width), os_window);
+                unsigned bar_w = os_window->tab_bar_width_override_px
+                    ? os_window->tab_bar_width_override_px
+                    : (unsigned)pt_to_px_for_os_window(OPT(tab_bar_width), os_window);
                 bar_w = MIN(bar_w, (unsigned)os_window->viewport_width);
                 central->left = 0;
                 central->right = os_window->viewport_width - bar_w;
@@ -1111,6 +1116,15 @@ PYWRAP1(mark_tab_bar_dirty) {
     WITH_OS_WINDOW(os_window_id)
         os_window->has_too_few_tabs = !should_be_shown;
         os_window->tab_bar_data_updated = false;
+    END_WITH_OS_WINDOW
+    Py_RETURN_NONE;
+}
+
+PYWRAP1(set_tab_bar_width_override) {
+    id_type os_window_id; unsigned int width_px;
+    PA("KI", &os_window_id, &width_px);
+    WITH_OS_WINDOW(os_window_id)
+        os_window->tab_bar_width_override_px = width_px;
     END_WITH_OS_WINDOW
     Py_RETURN_NONE;
 }
@@ -1777,6 +1791,7 @@ static PyMethodDef module_methods[] = {
     MW(set_os_window_chrome, METH_VARARGS),
     MW(focus_os_window, METH_VARARGS),
     MW(mark_tab_bar_dirty, METH_VARARGS),
+    MW(set_tab_bar_width_override, METH_VARARGS),
     MW(is_tab_bar_visible, METH_VARARGS),
     MW(run_with_activation_token, METH_O),
     MW(change_background_opacity, METH_VARARGS),

@@ -459,6 +459,7 @@ option_names = (
     'sync_to_monitor',
     'tab_activity_symbol',
     'tab_bar_align',
+    'tab_bar_auto_width',
     'tab_bar_background',
     'tab_bar_edge',
     'tab_bar_filter',
@@ -667,6 +668,7 @@ class Options:
     sync_to_monitor: bool = True
     tab_activity_symbol: str = ''
     tab_bar_align: choices_for_tab_bar_align = 'left'
+    tab_bar_auto_width: bool = False
     tab_bar_background: kitty.fast_data_types.Color | None = None
     tab_bar_edge: int = 8
     tab_bar_filter: str = ''
