@@ -1630,7 +1630,7 @@ opt('tab_bar_margin_width', '0.0',
     )
 
 opt('tab_bar_width', '120.0',
-    option_type='positive_float',
+    option_type='positive_float', ctype='float',
     long_text='''
 The width of the tab bar (in pts) when :opt:`tab_bar_edge` is set to
 :code:`left` or :code:`right`. Ignored for top/bottom tab bars.

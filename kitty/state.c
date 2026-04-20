@@ -696,16 +696,45 @@ os_window_regions(const OSWindow *os_window, Region *central, Region *tab_bar) {
     if (!OPT(tab_bar_hidden) && os_window->num_tabs && !os_window->has_too_few_tabs) {
         long margin_outer = pt_to_px_for_os_window(OPT(tab_bar_margin_height.outer), os_window);
         long margin_inner = pt_to_px_for_os_window(OPT(tab_bar_margin_height.inner), os_window);
-        central->left = 0; central->right = os_window->viewport_width;
         unsigned tab_bar_height = os_window->fonts_data->fcm.cell_height + margin_inner + margin_outer;
         switch(OPT(tab_bar_edge)) {
+            case LEFT_EDGE: {
+                // Vertical tab bar on the left. No inner/outer margins yet — tab_bar_margin_height
+                // is specific to horizontal bars. Width is configured by tab_bar_width (pts).
+                unsigned bar_w = pt_to_px_for_os_window(OPT(tab_bar_width), os_window);
+                bar_w = MIN(bar_w, (unsigned)os_window->viewport_width);
+                central->left = bar_w;
+                central->right = os_window->viewport_width;
+                central->top = 0;
+                central->bottom = os_window->viewport_height;
+                tab_bar->left = 0;
+                tab_bar->right = bar_w;
+                tab_bar->top = 0;
+                tab_bar->bottom = os_window->viewport_height;
+                return;
+            }
+            case RIGHT_EDGE: {
+                unsigned bar_w = pt_to_px_for_os_window(OPT(tab_bar_width), os_window);
+                bar_w = MIN(bar_w, (unsigned)os_window->viewport_width);
+                central->left = 0;
+                central->right = os_window->viewport_width - bar_w;
+                central->top = 0;
+                central->bottom = os_window->viewport_height;
+                tab_bar->left = central->right;
+                tab_bar->right = os_window->viewport_width;
+                tab_bar->top = 0;
+                tab_bar->bottom = os_window->viewport_height;
+                return;
+            }
             case TOP_EDGE:
+                central->left = 0; central->right = os_window->viewport_width;
                 central->top = tab_bar_height;
                 central->bottom = os_window->viewport_height;
                 central->top = MIN(central->top, central->bottom);
                 tab_bar->top = margin_outer;
                 break;
             default:
+                central->left = 0; central->right = os_window->viewport_width;
                 central->top = 0;
                 long bottom = os_window->viewport_height - tab_bar_height;
                 central->bottom = MAX(0, bottom);
