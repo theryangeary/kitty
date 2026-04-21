@@ -74,7 +74,7 @@ Env = glfw.Env
 env = Env()
 PKGCONFIG = os.environ.get('PKGCONFIG_EXE', 'pkg-config')
 link_targets: List[str] = []
-macos_universal_arches = ('arm64', 'x86_64') if is_arm else ('x86_64', 'arm64')
+macos_universal_arches = ('arm64',)
 
 
 def LinkKey(output: str) -> CompileKey:
@@ -1459,11 +1459,8 @@ def copy_man_pages(ddir: str) -> None:
             shutil.rmtree(os.path.join(mandir, f'man{x}'))
     src = 'docs/_build/man'
     if not os.path.exists(src):
-        raise SystemExit('''\
-The kitty man pages are missing. If you are building from git then run:
-make && make docs
-(needs the sphinx documentation system to be installed)
-''')
+        print('WARNING: kitty man pages are missing, skipping. Run "make docs" to build them.')
+        return
     for x in man_levels:
         os.makedirs(os.path.join(mandir, f'man{x}'))
         for y in glob.glob(os.path.join(src, f'*.{x}')):
@@ -1477,11 +1474,8 @@ def copy_html_docs(ddir: str) -> None:
         shutil.rmtree(htmldir)
     src = 'docs/_build/html'
     if not os.path.exists(src):
-        raise SystemExit('''\
-The kitty html docs are missing. If you are building from git then run:
-make && make docs
-(needs the sphinx documentation system to be installed)
-''')
+        print('WARNING: kitty html docs are missing, skipping. Run "make docs" to build them.')
+        return
     shutil.copytree(src, htmldir)
 
 
