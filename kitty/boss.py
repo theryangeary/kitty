@@ -124,6 +124,8 @@ from .fast_data_types import (
     set_window_being_dragged,
     start_drag_with_data,
     thread_write,
+    get_tab_bar_hidden,
+    set_tab_bar_hidden,
     toggle_fullscreen,
     toggle_maximized,
     toggle_os_window_visibility,
@@ -1334,6 +1336,16 @@ class Boss:
             if tm:
                 os_window_id = tm.os_window_id
         toggle_fullscreen(os_window_id)
+
+    @ac('win', 'Toggle the visibility of the tab bar')
+    def toggle_tab_bar(self) -> None:
+        tms = list(self.all_tab_managers)
+        if not tms:
+            return
+        new_hidden = not get_tab_bar_hidden()
+        set_tab_bar_hidden(new_hidden)
+        for tm in tms:
+            tm.set_tab_bar_hidden(new_hidden)
 
     @ac('win', 'Toggle the maximized status of the active OS Window')
     def toggle_maximized(self, os_window_id: int = 0) -> None:

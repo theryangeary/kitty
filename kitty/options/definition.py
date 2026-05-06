@@ -3545,6 +3545,10 @@ map('Show documentation',
 map('Command palette',
     'command_palette kitty_mod+f3 command_palette')
 
+map('Toggle tab bar visibility',
+    'toggle_tab_bar kitty_mod+shift+t toggle_tab_bar',
+    )
+
 map('Toggle fullscreen',
     'toggle_fullscreen kitty_mod+f11 toggle_fullscreen',
     )

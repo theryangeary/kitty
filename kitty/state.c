@@ -1140,6 +1140,18 @@ PYWRAP1(is_tab_bar_visible) {
     Py_RETURN_FALSE;
 }
 
+PYWRAP1(set_tab_bar_hidden) {
+    int hidden;
+    PA("p", &hidden);
+    global_state.opts.tab_bar_hidden = hidden ? true : false;
+    Py_RETURN_NONE;
+}
+
+PYWRAP0(get_tab_bar_hidden) {
+    if (global_state.opts.tab_bar_hidden) Py_RETURN_TRUE;
+    Py_RETURN_FALSE;
+}
+
 
 PYWRAP1(change_background_opacity) {
     id_type os_window_id;
@@ -1793,6 +1805,8 @@ static PyMethodDef module_methods[] = {
     MW(mark_tab_bar_dirty, METH_VARARGS),
     MW(set_tab_bar_width_override, METH_VARARGS),
     MW(is_tab_bar_visible, METH_VARARGS),
+    MW(set_tab_bar_hidden, METH_VARARGS),
+    MW(get_tab_bar_hidden, METH_NOARGS),
     MW(run_with_activation_token, METH_O),
     MW(change_background_opacity, METH_VARARGS),
     MW(background_opacity_of, METH_O),

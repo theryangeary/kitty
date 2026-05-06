@@ -2119,4 +2119,12 @@ class TabManager:  # {{{
         set_tab_bar_width_override(self.os_window_id, 0)
         self.update_tab_bar_data()
         self.layout_tab_bar()
+
+    def set_tab_bar_hidden(self, hidden: bool) -> None:
+        if self.tab_bar_hidden == hidden:
+            return
+        self.tab_bar_hidden = hidden
+        self.update_tab_bar_data()
+        self.layout_tab_bar()
+        self.resize(only_tabs=True)
 # }}}

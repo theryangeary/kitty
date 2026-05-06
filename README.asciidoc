@@ -1,5 +1,17 @@
 = kitty - the fast, feature-rich, cross-platform, GPU based terminal
 
+[NOTE]
+====
+*This is a custom fork* that adds a vertical tab bar and a runtime toggle for tab bar visibility (F1). It is not the upstream kitty project.
+
+To build the app:
+
+----
+python3 setup.py kitty.app
+open ./kitty.app
+----
+====
+
 If you live in the terminal, *kitty* is made for **you**!
 
 See https://sw.kovidgoyal.net/kitty/[the kitty website].
